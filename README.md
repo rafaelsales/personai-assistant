@@ -89,9 +89,15 @@ openssl s_client -connect imap.gmail.com:993 -crlf
    DB_PATH=./data/emails.db
    STATE_FILE_PATH=./data/current_state.json
    LOG_LEVEL=info
+   INITIAL_SYNC_COUNT=10
    ```
 
    ⚠️ **Replace** `your-email@gmail.com` and `xxxxxxxxxxxx` with your actual Gmail address and the app password from Step 3.
+
+   **Optional**: Adjust `INITIAL_SYNC_COUNT` to control how many unread emails to download on first run:
+   - `10` (default) - Download last 10 unread emails
+   - `0` - Skip initial sync, only monitor new emails going forward
+   - `100` - Download last 100 unread emails
 
 5. **Create data directory:**
    ```bash
@@ -109,8 +115,11 @@ npm start
 The program will:
 1. Connect to Gmail via IMAP
 2. Initialize SQLite database if needed
-3. Sync any missed emails since last run
-4. Start monitoring for new emails in real-time
+3. **First run**: Download the last 10 unread emails (configurable via `INITIAL_SYNC_COUNT`)
+4. **Subsequent runs**: Sync any missed emails since last run
+5. Start monitoring for new emails in real-time
+
+**Note**: On first run, the monitor downloads only your most recent unread emails (default: 10). This gives you some initial data without downloading your entire inbox history. Adjust `INITIAL_SYNC_COUNT` in `.env` to change this (set to 0 to skip initial sync).
 
 ### View Logs
 
@@ -152,6 +161,38 @@ Press `Ctrl+C` to gracefully shutdown. The program will:
 1. Close IMAP connection
 2. Save final state to `current_state.json`
 3. Close database connections
+
+### Import More Emails (Optional)
+
+By default, the monitor downloads the last 10 unread emails on first run. To import more emails:
+
+**Option 1: Increase INITIAL_SYNC_COUNT (before first run)**
+```bash
+# Edit .env file
+nano .env
+
+# Change INITIAL_SYNC_COUNT to desired number
+INITIAL_SYNC_COUNT=100  # Download last 100 unread emails
+
+# Start monitor
+npm start
+```
+
+**Option 2: Reset state file (after first run)**
+```bash
+# Stop the monitor (Ctrl+C)
+
+# Remove state file to trigger first-run behavior again
+rm data/current_state.json
+
+# Optionally adjust INITIAL_SYNC_COUNT in .env
+nano .env
+
+# Restart monitor
+npm start
+```
+
+**Warning**: Importing thousands of emails may take time. Monitor the logs and database size.
 
 ## Run as Background Service (Optional)
 

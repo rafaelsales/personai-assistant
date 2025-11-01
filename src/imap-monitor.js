@@ -45,6 +45,11 @@ async function initialize() {
     logger.info('Connecting to IMAP', { host: config.imap.host });
     await imapClient.connect();
 
+    // First run: Download last X unread emails
+    if (state.last_uid === 0) {
+      await syncInitialUnreadEmails();
+    }
+
     // Start IDLE monitoring
     imapClient.startIDLE();
 
@@ -52,6 +57,45 @@ async function initialize() {
   } catch (error) {
     logger.error('Initialization failed', { error: error.message, stack: error.stack });
     await gracefulShutdown(1);
+  }
+}
+
+/**
+ * Sync initial unread emails on first run
+ */
+async function syncInitialUnreadEmails() {
+  try {
+    const syncCount = config.initialSync.count;
+    logger.info('First run: Syncing initial unread emails', { count: syncCount });
+
+    // Search for unread emails
+    const unreadUids = await imapClient.search(['UNSEEN']);
+
+    if (unreadUids.length === 0) {
+      logger.info('No unread emails found');
+      return;
+    }
+
+    // Take only the last X unread emails
+    const uidsToSync = unreadUids.slice(-syncCount);
+    logger.info('Found unread emails', {
+      total: unreadUids.length,
+      syncing: uidsToSync.length,
+    });
+
+    // Process each email
+    for (const uid of uidsToSync) {
+      try {
+        await processEmail(imapClient, db, config.state.path, uid);
+      } catch (error) {
+        logger.warn('Failed to sync initial email', { uid, error: error.message });
+      }
+    }
+
+    logger.info('Initial sync complete', { emailsSynced: uidsToSync.length });
+  } catch (error) {
+    logger.error('Initial sync failed', { error: error.message });
+    // Don't throw - continue with monitoring even if initial sync fails
   }
 }
 

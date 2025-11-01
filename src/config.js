@@ -56,6 +56,10 @@ export const config = {
   logging: {
     level: process.env.LOG_LEVEL || 'info', // error, warn, info, debug
   },
+
+  initialSync: {
+    count: parseInt(process.env.INITIAL_SYNC_COUNT || '10', 10), // Number of unread emails to sync on first run
+  },
 };
 
 export default config;
