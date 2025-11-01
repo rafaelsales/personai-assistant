@@ -1,0 +1,32 @@
+{
+  "name": "gmail-imap-monitor",
+  "version": "1.0.0",
+  "description": "Local macOS background service that monitors Gmail IMAP, downloads emails in real-time, and stores them in SQLite",
+  "type": "module",
+  "main": "src/imap-monitor.js",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node src/imap-monitor.js",
+    "test": "node --test tests/**/*.test.js",
+    "test:coverage": "node --test --experimental-test-coverage tests/**/*.test.js"
+  },
+  "keywords": [
+    "gmail",
+    "imap",
+    "email",
+    "monitor",
+    "sqlite",
+    "real-time"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "imap": "^0.8.19",
+    "better-sqlite3": "^11.0.0",
+    "mailparser": "^3.7.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {}
+}
