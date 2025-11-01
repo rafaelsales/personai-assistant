@@ -50,7 +50,7 @@ specs/[###-feature]/
 ```text
 personai-assistant/
 ├── src/
-│   ├── index.js              # Main entry point, process lifecycle
+│   ├── imap-monitor.js       # Main entry point, process lifecycle
 │   ├── imap-client.js        # IMAP connection management, IDLE handling
 │   ├── email-processor.js    # Email parsing and storage logic
 │   ├── database.js           # SQLite operations and schema

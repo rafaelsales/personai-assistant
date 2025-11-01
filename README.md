@@ -162,7 +162,7 @@ Press `Ctrl+C` to gracefully shutdown. The program will:
 npm install -g pm2
 
 # Start the service
-pm2 start src/index.js --name gmail-monitor
+pm2 start src/imap-monitor.js --name gmail-monitor
 
 # View logs
 pm2 logs gmail-monitor
@@ -192,7 +192,7 @@ Create `~/Library/LaunchAgents/com.personai.gmail-monitor.plist`:
     <key>ProgramArguments</key>
     <array>
         <string>/usr/local/bin/node</string>
-        <string>/Users/YOUR_USERNAME/Code/ws/personai-assistant/src/index.js</string>
+        <string>/Users/YOUR_USERNAME/Code/ws/personai-assistant/src/imap-monitor.js</string>
     </array>
     <key>WorkingDirectory</key>
     <string>/Users/YOUR_USERNAME/Code/ws/personai-assistant</string>
@@ -281,7 +281,7 @@ personai-assistant/
 ├── .env                      # Your credentials (not in git)
 ├── .env.example              # Template for .env
 ├── src/
-│   ├── index.js             # Main entry point
+│   ├── imap-monitor.js      # Main entry point (IMAP monitor)
 │   ├── imap-client.js       # IMAP connection handler
 │   ├── email-processor.js   # Email parsing logic
 │   ├── database.js          # SQLite operations

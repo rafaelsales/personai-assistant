@@ -67,7 +67,7 @@
 - [x] T013 [US1] Implement email parser in src/email-processor.js: fetchEmail(), parseHeaders(), parseBody() using mailparser
 - [x] T014 [US1] Implement email validation in src/email-processor.js: validateEmailRecord() per data-model.md validation rules
 - [x] T015 [US1] Implement email storage workflow in src/email-processor.js: processEmail() that calls parser → validator → storeEmail() → updateState()
-- [x] T016 [US1] Implement main entry point in src/index.js: initialize modules, start IMAP connection, handle 'mail' events, graceful shutdown on SIGINT/SIGTERM
+- [x] T016 [US1] Implement main entry point in src/imap-monitor.js: initialize modules, start IMAP connection, handle 'mail' events, graceful shutdown on SIGINT/SIGTERM
 - [x] T017 [US1] Add error handling for email parsing failures (log error, skip email, continue - FR-014)
 - [x] T018 [US1] Add duplicate prevention logic using UID check before insertion (FR-009)
 - [x] T019 [US1] Add structured logging for email receipt events (UID, subject, from, timestamp - FR-011)
@@ -102,7 +102,7 @@
 - [ ] T023 [US2] Implement missed email sync in src/imap-client.js: syncMissedEmails() that searches UIDs greater than last_uid (FR-008)
 - [ ] T024 [US2] Update state manager in src/state-manager.js: track connection_status transitions (connected/reconnecting/disconnected)
 - [ ] T025 [US2] Add error logging to state file when connection drops (last_error field, FR-005)
-- [ ] T026 [US2] Update main entry point in src/index.js: wire up reconnection logic on connection loss
+- [ ] T026 [US2] Update main entry point in src/imap-monitor.js: wire up reconnection logic on connection loss
 - [ ] T027 [US2] Add structured logging for reconnection attempts (timestamp, attempt number, backoff delay - FR-011)
 - [ ] T028 [US2] Handle Mac sleep/wake cycles by treating as connection drop and triggering reconnection
 
@@ -132,7 +132,7 @@
 
 - [ ] T029 [P] [US3] Add detailed state updates in src/state-manager.js: updateState() called immediately after each email processed (FR-005)
 - [ ] T030 [P] [US3] Add connection timestamp tracking in src/imap-client.js: update last_connected_at on successful connection
-- [ ] T031 [P] [US3] Add comprehensive logging in src/index.js: log startup, connection established, IDLE activated
+- [ ] T031 [P] [US3] Add comprehensive logging in src/imap-monitor.js: log startup, connection established, IDLE activated
 - [ ] T032 [US3] Enhance email logging in src/email-processor.js: include UID, subject, sender in each log entry (FR-011)
 - [ ] T033 [US3] Add error context logging: include error type, timestamp, affected email UID when parsing fails
 - [ ] T034 [US3] Implement state file validation on startup: check for corruption, attempt recovery with initial state if needed
@@ -161,7 +161,7 @@
 - [ ] T038 [P] Handle edge case: database locked errors (retry with backoff, don't crash)
 - [ ] T039 [P] Handle edge case: credentials expired/revoked (log auth error, update state, attempt reconnection)
 - [ ] T040 [P] Handle edge case: initial startup with empty database (start monitoring from current point, don't sync history)
-- [ ] T041 [P] Implement graceful shutdown in src/index.js: handle SIGINT/SIGTERM, close IMAP, flush state, close database (FR-012)
+- [ ] T041 [P] Implement graceful shutdown in src/imap-monitor.js: handle SIGINT/SIGTERM, close IMAP, flush state, close database (FR-012)
 - [ ] T042 [P] Add performance optimization: use prepared statements for database operations (already in contract)
 - [ ] T043 [P] Add performance optimization: batch sync using transactions when syncing missed emails
 - [ ] T044 Create comprehensive README.md based on quickstart.md with setup, configuration, running instructions
@@ -346,7 +346,7 @@ Phase 6: Polish & Cross-Cutting Concerns
    - Unit tests can be added incrementally as modules are implemented
 
 4. **Key Files** (as per plan.md):
-   - `src/index.js` - Main entry point (T016, T026, T031, T041)
+   - `src/imap-monitor.js` - Main entry point (T016, T026, T031, T041)
    - `src/config.js` - Configuration (T006)
    - `src/database.js` - SQLite operations (T007, T010)
    - `src/state-manager.js` - State persistence (T008, T011, T024, T029, T035)
