@@ -54,13 +54,13 @@ export async function parseBody(bodyStr) {
 /**
  * Fetch and parse complete email
  * @param {ImapClient} imapClient - IMAP client instance
- * @param {number} uid - Email UID
+ * @param {number} id - Email id
  * @returns {Promise<Object>} - Parsed email record
  */
-export async function fetchEmail(imapClient, uid) {
+export async function fetchEmail(imapClient, id) {
   try {
     // Fetch raw email data from IMAP
-    const emailData = await imapClient.fetchEmail(uid);
+    const emailData = await imapClient.fetchEmail(id);
 
     // Parse headers
     const headers = parseHeaders(emailData.headers || '');
@@ -73,22 +73,29 @@ export async function fetchEmail(imapClient, uid) {
     const labels = emailData.attrs?.['x-gm-labels'] || [];
     const labelsJson = JSON.stringify(Array.isArray(labels) ? labels : [labels]);
 
-    // Build email record
+    // Extract Gmail thread ID from IMAP attributes (x-gm-thrid)
+    const threadId = emailData.attrs?.['x-gm-thrid']
+      ? String(emailData.attrs['x-gm-thrid'])
+      : '';
+
+    // Build email record with new schema
+    // Field order: id, thread_id, received_at, downloaded_at, from_address, to_address, cc_address, subject, labels, body
     const emailRecord = {
-      uid: emailData.uid,
+      id: String(emailData.id), // Ensure text type
+      thread_id: threadId,
+      received_at: parsed.date ? parsed.date.toISOString() : new Date().toISOString(),
+      downloaded_at: new Date().toISOString(),
       from_address: parsed.from?.text || headers.from || '',
       to_address: parsed.to?.text || headers.to || '',
       cc_address: parsed.cc?.text || headers.cc || null,
       subject: parsed.subject || headers.subject || '',
-      body: parsed.text || parsed.html || '',
-      original_date: parsed.date ? parsed.date.toISOString() : new Date().toISOString(),
       labels: labelsJson,
-      received_at: new Date().toISOString(),
+      body: parsed.text || parsed.html || '',
     };
 
     return emailRecord;
   } catch (error) {
-    logger.error('Email fetch failed', { uid, error: error.message });
+    logger.error('Email fetch failed', { id, error: error.message });
     throw error;
   }
 }
@@ -100,9 +107,17 @@ export async function fetchEmail(imapClient, uid) {
  * @throws {Error} if validation fails
  */
 export function validateEmailRecord(email) {
-  // UID validation
-  if (!Number.isInteger(email.uid) || email.uid <= 0) {
-    throw new Error('UID must be a positive integer');
+  // id validation - must be non-empty text
+  if (!email.id || typeof email.id !== 'string') {
+    throw new Error('id must be a non-empty string');
+  }
+
+  // thread_id validation - must be string (can be empty for migrated records)
+  if (email.thread_id === null || email.thread_id === undefined) {
+    email.thread_id = '';
+  }
+  if (typeof email.thread_id !== 'string') {
+    throw new Error('thread_id must be a string');
   }
 
   // Required text fields
@@ -136,11 +151,11 @@ export function validateEmailRecord(email) {
   }
 
   // Date validation (ISO 8601)
-  if (!email.original_date || typeof email.original_date !== 'string') {
-    throw new Error('original_date must be ISO 8601 format');
-  }
   if (!email.received_at || typeof email.received_at !== 'string') {
     throw new Error('received_at must be ISO 8601 format');
+  }
+  if (!email.downloaded_at || typeof email.downloaded_at !== 'string') {
+    throw new Error('downloaded_at must be ISO 8601 format');
   }
 
   return email;
@@ -151,15 +166,15 @@ export function validateEmailRecord(email) {
  * @param {ImapClient} imapClient - IMAP client instance
  * @param {Database} db - Database instance
  * @param {string} statePath - State file path
- * @param {number} uid - Email UID
+ * @param {number} id - Email id
  * @returns {Promise<boolean>} - true if processed successfully
  */
-export async function processEmail(imapClient, db, statePath, uid) {
+export async function processEmail(imapClient, db, statePath, id) {
   try {
-    logger.debug('Processing email', { uid });
+    logger.debug('Processing email', { id });
 
     // Fetch and parse email
-    const emailRecord = await fetchEmail(imapClient, uid);
+    const emailRecord = await fetchEmail(imapClient, id);
 
     // Validate email record
     validateEmailRecord(emailRecord);
@@ -168,26 +183,26 @@ export async function processEmail(imapClient, db, statePath, uid) {
     const stored = storeEmail(db, emailRecord);
 
     if (!stored) {
-      logger.warn('Duplicate email detected', { uid });
+      logger.warn('Duplicate email detected', { id });
       return false;
     }
 
-    // Update state with new UID
+    // Update state with new id
     updateState(statePath, {
-      last_uid: emailRecord.uid,
-      last_uid_received_at: emailRecord.received_at,
+      last_id: emailRecord.id,
+      last_id_received_at: emailRecord.downloaded_at,
       last_error: null,
     });
 
     logger.info('Email processed successfully', {
-      uid: emailRecord.uid,
+      id: emailRecord.id,
       subject: emailRecord.subject,
       from: emailRecord.from_address,
     });
 
     return true;
   } catch (error) {
-    logger.error('Email processing failed', { uid, error: error.message });
+    logger.error('Email processing failed', { id, error: error.message });
     // Don't throw - graceful degradation (FR-014)
     return false;
   }

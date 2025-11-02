@@ -31,7 +31,7 @@ async function initialize() {
     // Initialize state
     const state = initState(config.state.path);
     logger.info('State initialized', {
-      last_uid: state.last_uid,
+      last_id: state.last_id,
       connection_status: state.connection_status,
     });
 
@@ -46,7 +46,7 @@ async function initialize() {
     await imapClient.connect();
 
     // First run: Download last X unread emails
-    if (state.last_uid === 0) {
+    if (state.last_id === 0) {
       await syncInitialUnreadEmails();
     }
 
@@ -69,26 +69,26 @@ async function syncInitialUnreadEmails() {
     logger.info('First run: Syncing initial unread emails', { count: syncCount });
 
     // Search for unread emails
-    const unreadUids = await imapClient.search(['UNSEEN']);
+    const unreadIds = await imapClient.search(['UNSEEN']);
 
-    if (unreadUids.length === 0) {
+    if (unreadIds.length === 0) {
       logger.info('No unread emails found');
       return;
     }
 
     // Take only the last X unread emails
-    const uidsToSync = unreadUids.slice(-syncCount);
+    const uidsToSync = unreadIds.slice(-syncCount);
     logger.info('Found unread emails', {
-      total: unreadUids.length,
+      total: unreadIds.length,
       syncing: uidsToSync.length,
     });
 
     // Process each email
-    for (const uid of uidsToSync) {
+    for (const id of uidsToSync) {
       try {
-        await processEmail(imapClient, db, config.state.path, uid);
+        await processEmail(imapClient, db, config.state.path, id);
       } catch (error) {
-        logger.warn('Failed to sync initial email', { uid, error: error.message });
+        logger.warn('Failed to sync initial email', { id, error: error.message });
       }
     }
 
@@ -113,28 +113,28 @@ function setupEventHandlers() {
       // Search for all messages in INBOX
       const uids = await imapClient.search(['ALL']);
 
-      // Get current last_uid from state to find new emails
+      // Get current last_id from state to find new emails
       const { readState } = await import('./state-manager.js');
       const state = readState(config.state.path);
-      const lastUid = state.last_uid;
+      const lastId = state.last_id;
 
       // Filter for UIDs greater than last processed
-      const newUids = uids.filter(uid => uid > lastUid);
+      const newIds = uids.filter(id => id > lastId);
 
-      if (newUids.length === 0) {
+      if (newIds.length === 0) {
         logger.debug('No new emails to process');
         return;
       }
 
-      logger.info('Processing new emails', { count: newUids.length });
+      logger.info('Processing new emails', { count: newIds.length });
 
       // Process each new email
-      for (const uid of newUids) {
+      for (const id of newIds) {
         try {
-          await processEmail(imapClient, db, config.state.path, uid);
+          await processEmail(imapClient, db, config.state.path, id);
         } catch (error) {
           // Error already logged in processEmail, continue with next email (FR-014)
-          logger.warn('Skipping email due to processing error', { uid });
+          logger.warn('Skipping email due to processing error', { id });
         }
       }
     } catch (error) {

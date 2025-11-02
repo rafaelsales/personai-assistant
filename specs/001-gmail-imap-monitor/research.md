@@ -64,9 +64,9 @@ This document captures research findings and technical decisions for the Gmail I
 **Selected**: `better-sqlite3`
 
 **Implementation Notes**:
-- Use prepared statements for all queries (INSERT, SELECT, UID lookups)
+- Use prepared statements for all queries (INSERT, SELECT, id lookups)
 - Enable WAL mode for better concurrency: `db.pragma('journal_mode = WAL')`
-- Create indexes on `uid` (primary key) and `received_at` (chronological queries) as per requirements
+- Create indexes on `id` (primary key) and `downloaded_at` (chronological queries) as per requirements
 - Use transactions for batch operations during sync after reconnection
 - Database path: `./data/emails.db` as specified in requirements
 

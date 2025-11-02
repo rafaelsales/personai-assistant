@@ -42,25 +42,25 @@ Store email in database with duplicate prevention.
 - `email` (EmailRecord): Email object matching schema:
   ```typescript
   {
-    uid: number;
+    id: number;
     from_address: string;
     to_address: string;
     cc_address: string | null;
     subject: string;
     body: string;
-    original_date: string;  // ISO 8601
+    received_at: string;  // ISO 8601
     labels: string;         // JSON array string
-    received_at: string;    // ISO 8601
+    downloaded_at: string;    // ISO 8601
   }
   ```
 
 **Returns**: `boolean`
 - `true` if email was stored successfully
-- `false` if email already exists (duplicate UID)
+- `false` if email already exists (duplicate id)
 
 **Behavior**:
 - Validates email object structure
-- Checks for duplicate UID (SELECT query)
+- Checks for duplicate id (SELECT query)
 - If not duplicate, inserts email
 - Uses prepared statement for performance
 - Logs warning if duplicate detected
@@ -72,15 +72,15 @@ Store email in database with duplicate prevention.
 **Example**:
 ```javascript
 const email = {
-  uid: 12345,
+  id: 12345,
   from_address: 'sender@example.com',
   to_address: 'recipient@gmail.com',
   cc_address: null,
   subject: 'Test Email',
   body: 'This is a test',
-  original_date: '2025-11-01T10:00:00.000Z',
+  received_at: '2025-11-01T10:00:00.000Z',
   labels: '["INBOX"]',
-  received_at: '2025-11-01T10:00:02.123Z'
+  downloaded_at: '2025-11-01T10:00:02.123Z'
 };
 
 const stored = storeEmail(db, email);
@@ -93,13 +93,13 @@ if (stored) {
 
 ---
 
-### `getEmailByUid(db: Database, uid: number): EmailRecord | null`
+### `getEmailById(db: Database, id: number): EmailRecord | null`
 
-Retrieve email by UID.
+Retrieve email by id.
 
 **Parameters**:
 - `db` (Database): Database instance
-- `uid` (number): Email UID
+- `id` (number): Email id
 
 **Returns**: `EmailRecord | null`
 - Email object if found
@@ -110,12 +110,12 @@ Retrieve email by UID.
 - Returns single record or null
 
 **Errors**:
-- Throws `ValidationError` if UID is not a positive integer
+- Throws `ValidationError` if id is not a positive integer
 - Throws `DatabaseError` with code `QUERY_FAILED` if query fails
 
 **Example**:
 ```javascript
-const email = getEmailByUid(db, 12345);
+const email = getEmailById(db, 12345);
 if (email) {
   console.log('Found email:', email.subject);
 }
@@ -131,11 +131,11 @@ Retrieve most recent emails in chronological order.
 - `db` (Database): Database instance
 - `limit` (number): Maximum number of emails to retrieve (default: 100)
 
-**Returns**: `EmailRecord[]` - Array of email objects, ordered by `received_at` DESC
+**Returns**: `EmailRecord[]` - Array of email objects, ordered by `downloaded_at` DESC
 
 **Behavior**:
 - Uses `idx_received_at` index for efficient scan
-- Orders by `received_at` descending (most recent first)
+- Orders by `downloaded_at` descending (most recent first)
 - Limits result set
 
 **Errors**:
@@ -146,7 +146,7 @@ Retrieve most recent emails in chronological order.
 ```javascript
 const recentEmails = getRecentEmails(db, 50);
 recentEmails.forEach(email => {
-  console.log(`${email.received_at}: ${email.subject}`);
+  console.log(`${email.downloaded_at}: ${email.subject}`);
 });
 ```
 
@@ -210,7 +210,7 @@ Thrown when input validation fails.
 - `name`: `'ValidationError'`
 - `message`: Description of validation failure
 - `code`: `'INVALID_INPUT'`
-- `context`: Object with details (e.g., `{ field: 'uid', value: -1 }`)
+- `context`: Object with details (e.g., `{ field: 'id', value: -1 }`)
 
 ### `DatabaseError`
 
@@ -234,7 +234,7 @@ Thrown when database operation fails.
 |-----------|---------------|-------------|
 | `initDatabase()` | <100ms | N/A (one-time) |
 | `storeEmail()` | <10ms | O(1) per email |
-| `getEmailByUid()` | <1ms | O(1) lookup |
+| `getEmailById()` | <1ms | O(1) lookup |
 | `getRecentEmails(100)` | <10ms | O(n) where n=limit |
 | `countEmails()` | <5ms | O(1) with table stats |
 | `closeDatabase()` | <50ms | N/A |
@@ -257,15 +257,15 @@ Thrown when database operation fails.
 
 2. Test `storeEmail()`:
    - Stores valid email
-   - Rejects duplicate UID
+   - Rejects duplicate id
    - Validates email structure
    - Handles missing optional fields (cc_address)
    - Handles edge cases (empty subject, empty body)
 
-3. Test `getEmailByUid()`:
+3. Test `getEmailById()`:
    - Retrieves existing email
-   - Returns null for non-existent UID
-   - Validates UID input
+   - Returns null for non-existent id
+   - Validates id input
 
 4. Test `getRecentEmails()`:
    - Returns emails in DESC order
@@ -311,15 +311,15 @@ const db = initDatabase('./data/emails.db');
 
 // Store email
 const email = {
-  uid: 12345,
+  id: 12345,
   from_address: 'sender@example.com',
   to_address: 'recipient@gmail.com',
   cc_address: null,
   subject: 'Test',
   body: 'Body',
-  original_date: new Date().toISOString(),
+  received_at: new Date().toISOString(),
   labels: '["INBOX"]',
-  received_at: new Date().toISOString()
+  downloaded_at: new Date().toISOString()
 };
 
 storeEmail(db, email);

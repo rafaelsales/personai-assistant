@@ -126,13 +126,13 @@ export class ImapClient extends EventEmitter {
   }
 
   /**
-   * Fetch email by UID
-   * @param {number} uid - Email UID
+   * Fetch email by id
+   * @param {number} id - Email id
    * @returns {Promise<Object>} - Email data
    */
-  async fetchEmail(uid) {
+  async fetchEmail(id) {
     return new Promise((resolve, reject) => {
-      const fetch = this.imap.fetch([uid], {
+      const fetch = this.imap.fetch([id], {
         bodies: ['HEADER.FIELDS (FROM TO CC SUBJECT DATE)', 'TEXT'],
         struct: true,
       });
@@ -156,7 +156,7 @@ export class ImapClient extends EventEmitter {
 
         msg.once('attributes', (attrs) => {
           emailData.attrs = attrs;
-          emailData.uid = attrs.uid;
+          emailData.id = attrs.id;
         });
       });
 
