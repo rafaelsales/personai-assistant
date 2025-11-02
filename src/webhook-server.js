@@ -55,9 +55,7 @@ const REQUIRED_FIELDS = [
   'received_at',
   'downloaded_at',
   'from_address',
-  'to_address',
   'subject',
-  'labels',
   'body'
 ];
 
@@ -80,7 +78,7 @@ function validatePayload(payload) {
     return !payload.hasOwnProperty(field) ||
            payload[field] === null ||
            payload[field] === undefined ||
-           (typeof payload[field] === 'string' && payload[field].trim() === '' && field !== 'labels');
+           (typeof payload[field] === 'string' && payload[field].trim() === '');
   });
 
   if (missingFields.length > 0) {
