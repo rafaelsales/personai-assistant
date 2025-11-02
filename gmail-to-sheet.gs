@@ -36,40 +36,48 @@ function syncUnreadEmails() {
   if (sheet.getLastRow() === 0) {
     const headers = [
       'id',
+      'thread_id',
+      'received_at',
+      'downloaded_at',
+      'broadcasted_at',
       'from_address',
       'to_address',
       'cc_address',
       'subject',
-      'body',
-      'original_date',
       'labels',
-      'received_at'
+      'body'
     ];
     sheet.appendRow(headers);
     sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
   }
 
-  // Get existing message IDs to avoid duplicates
-  const existingIds = getExistingMessageIds(sheet);
+  // Get or create the "assistant-downloaded" label
+  const labelName = 'assistant-downloaded';
+  let assistantLabel;
+  try {
+    assistantLabel = GmailApp.getUserLabelByName(labelName);
+    if (!assistantLabel) {
+      assistantLabel = GmailApp.createLabel(labelName);
+      Logger.log(`Created new label: ${labelName}`);
+    }
+  } catch (error) {
+    Logger.log(`Error with label: ${error.message}`);
+    throw new Error(`Failed to get or create label "${labelName}"`);
+  }
 
-  // Process unread emails
-  const threads = GmailApp.search('is:unread', 0, 500); // Process up to 500 threads at a time
+  // Process unread emails without "assistant-downloaded" label
+  const threads = GmailApp.search('is:unread -label:assistant-downloaded', 0, 500);
   let processedCount = 0;
-  let skippedCount = 0;
+  let errorCount = 0;
 
-  Logger.log(`Found ${threads.length} unread threads`);
+  Logger.log(`Found ${threads.length} unread threads without "${labelName}" label`);
 
   threads.forEach(thread => {
     const messages = thread.getMessages();
+    let threadProcessedSuccessfully = true;
 
     messages.forEach(message => {
       const messageId = message.getId();
-
-      // Skip if already in sheet
-      if (existingIds.has(messageId)) {
-        skippedCount++;
-        return;
-      }
 
       try {
         const row = extractEmailData(message);
@@ -77,18 +85,35 @@ function syncUnreadEmails() {
         processedCount++;
       } catch (error) {
         Logger.log(`Error processing message ${messageId}: ${error.message}`);
+        threadProcessedSuccessfully = false;
+        errorCount++;
       }
     });
+
+    // Add label to thread after all messages are processed successfully
+    if (threadProcessedSuccessfully) {
+      try {
+        thread.addLabel(assistantLabel);
+      } catch (error) {
+        Logger.log(`Error adding label to thread: ${error.message}`);
+      }
+    }
   });
 
-  Logger.log(`Sync complete: ${processedCount} new emails added, ${skippedCount} skipped (already in sheet)`);
+  Logger.log(`Sync complete: ${processedCount} emails added, ${errorCount} errors`);
 
   // Show completion message
   SpreadsheetApp.getActiveSpreadsheet().toast(
-    `Synced ${processedCount} new unread emails. ${skippedCount} already in sheet.`,
+    `Synced ${processedCount} new unread emails and labeled them as "${labelName}".`,
     'Sync Complete',
     5
   );
+
+  // Broadcast messages to external API
+  if (processedCount > 0 || sheet.getLastRow() > 1) {
+    Logger.log('Starting broadcast to external API...');
+    broadcastMessages();
+  }
 }
 
 /**
@@ -116,17 +141,18 @@ function extractEmailData(message) {
     body = body.substring(0, 49997) + '...';
   }
 
-  const originalDate = Utilities.formatDate(
+  const receivedAt = Utilities.formatDate(
     message.getDate(),
     Session.getScriptTimeZone(),
     'yyyy-MM-dd HH:mm:ss'
   );
 
-  // Get thread labels
+  // Get thread ID and labels
   const thread = message.getThread();
+  const threadId = thread.getId();
   const labels = thread.getLabels().map(label => label.getName()).join(', ');
 
-  const receivedAt = Utilities.formatDate(
+  const downloadedAt = Utilities.formatDate(
     new Date(),
     Session.getScriptTimeZone(),
     'yyyy-MM-dd HH:mm:ss'
@@ -134,54 +160,171 @@ function extractEmailData(message) {
 
   return [
     messageId,
+    threadId,
+    receivedAt,
+    downloadedAt,
+    '', // broadcasted_at - empty initially
     fromAddress,
     toAddress,
     ccAddress,
     subject,
-    body,
-    originalDate,
     labels,
-    receivedAt
+    body
   ];
 }
 
 /**
- * Get existing message IDs from the sheet to avoid duplicates
- * @param {Sheet} sheet - Google Sheet object
- * @returns {Set} Set of existing message IDs
+ * Broadcast messages to external API
+ * Only broadcasts messages that haven't been broadcasted yet (broadcasted_at is empty)
  */
-function getExistingMessageIds(sheet) {
-  const existingIds = new Set();
+function broadcastMessages() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const WEBHOOK_URL = 'https://rafael-personai-assistent.loca.lt';
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY_MS = 3000; // 3 seconds
 
   if (sheet.getLastRow() <= 1) {
-    return existingIds; // Empty sheet (only headers or nothing)
+    Logger.log('No messages to broadcast');
+    return;
   }
 
-  // Get all IDs from column A (id column)
-  const idColumn = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
-  idColumn.forEach(row => {
-    if (row[0]) {
-      existingIds.add(row[0]);
-    }
-  });
+  // Get all data from sheet
+  const lastRow = sheet.getLastRow();
+  const data = sheet.getRange(2, 1, lastRow - 1, 11).getValues(); // 11 columns including thread_id
+  const headers = [
+    'id',
+    'thread_id',
+    'received_at',
+    'downloaded_at',
+    'broadcasted_at',
+    'from_address',
+    'to_address',
+    'cc_address',
+    'subject',
+    'labels',
+    'body'
+  ];
 
-  return existingIds;
+  let broadcastedCount = 0;
+  let failedCount = 0;
+
+  // Process each row
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i];
+    const rowNumber = i + 2; // +2 because: +1 for 0-index, +1 for header row
+    const broadcastedAt = row[4]; // Column E (broadcasted_at)
+
+    // Skip if already broadcasted
+    if (broadcastedAt && broadcastedAt !== '') {
+      continue;
+    }
+
+    // Build JSON payload
+    const payload = {};
+    headers.forEach((header, index) => {
+      payload[header] = row[index] || '';
+    });
+
+    // Try to broadcast with retries
+    const success = broadcastWithRetry(payload, WEBHOOK_URL, MAX_RETRIES, RETRY_DELAY_MS, rowNumber);
+
+    if (success) {
+      // Update broadcasted_at timestamp
+      const timestamp = Utilities.formatDate(
+        new Date(),
+        Session.getScriptTimeZone(),
+        'yyyy-MM-dd HH:mm:ss'
+      );
+      sheet.getRange(rowNumber, 5).setValue(timestamp); // Column E
+      broadcastedCount++;
+      Logger.log(`[Row ${rowNumber}] ✓ Broadcasted successfully`);
+    } else {
+      // Broadcasting failed after all retries - halt
+      failedCount++;
+      Logger.log(`[Row ${rowNumber}] ✗ Broadcasting failed after ${MAX_RETRIES} attempts. Halting broadcast.`);
+
+      // Show error message and stop
+      SpreadsheetApp.getActiveSpreadsheet().toast(
+        `Broadcast halted at row ${rowNumber}. ${broadcastedCount} messages sent, 1 failed.`,
+        'Broadcast Failed',
+        10
+      );
+      return; // Halt broadcasting
+    }
+  }
+
+  Logger.log(`Broadcast complete: ${broadcastedCount} messages sent successfully`);
+
+  if (broadcastedCount > 0) {
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      `Broadcasted ${broadcastedCount} messages to external API`,
+      'Broadcast Complete',
+      5
+    );
+  }
 }
 
 /**
- * Optional: Mark synced emails as read
- * Run this function separately if you want to mark all unread emails as read after syncing
+ * Broadcast a single message with retry logic
+ * @param {Object} payload - JSON payload to send
+ * @param {string} url - Webhook URL
+ * @param {number} maxRetries - Maximum number of retry attempts
+ * @param {number} delayMs - Delay between retries in milliseconds
+ * @param {number} rowNumber - Row number for logging
+ * @returns {boolean} True if successful, false otherwise
  */
-function markUnreadEmailsAsRead() {
-  const threads = GmailApp.search('is:unread');
+function broadcastWithRetry(payload, url, maxRetries, delayMs, rowNumber) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      Logger.log(`[Row ${rowNumber}] Attempt ${attempt}/${maxRetries}: Broadcasting to ${url}`);
+
+      const options = {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true // Don't throw exceptions on non-2xx responses
+      };
+
+      const response = UrlFetchApp.fetch(url, options);
+      const responseCode = response.getResponseCode();
+
+      // Check if response is 2xx (success)
+      if (responseCode >= 200 && responseCode < 300) {
+        Logger.log(`[Row ${rowNumber}] Attempt ${attempt}/${maxRetries}: Success (${responseCode})`);
+        return true;
+      } else {
+        Logger.log(`[Row ${rowNumber}] Attempt ${attempt}/${maxRetries}: Failed with status ${responseCode}`);
+        Logger.log(`[Row ${rowNumber}] Response: ${response.getContentText()}`);
+      }
+    } catch (error) {
+      Logger.log(`[Row ${rowNumber}] Attempt ${attempt}/${maxRetries}: Error - ${error.message}`);
+    }
+
+    // Wait before retrying (except on last attempt)
+    if (attempt < maxRetries) {
+      Logger.log(`[Row ${rowNumber}] Waiting ${delayMs}ms before retry...`);
+      Utilities.sleep(delayMs);
+    }
+  }
+
+  // All retries exhausted
+  return false;
+}
+
+/**
+ * Optional: Mark downloaded emails as read
+ * Run this function separately if you want to mark all "assistant-downloaded" emails as read
+ */
+function markDownloadedEmailsAsRead() {
+  const threads = GmailApp.search('is:unread label:assistant-downloaded');
 
   threads.forEach(thread => {
     thread.markRead();
   });
 
-  Logger.log(`Marked ${threads.length} threads as read`);
+  Logger.log(`Marked ${threads.length} downloaded threads as read`);
   SpreadsheetApp.getActiveSpreadsheet().toast(
-    `Marked ${threads.length} emails as read`,
+    `Marked ${threads.length} downloaded emails as read`,
     'Mark as Read Complete',
     3
   );
