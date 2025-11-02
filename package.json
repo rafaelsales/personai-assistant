@@ -10,6 +10,8 @@
   "scripts": {
     "imap-monitor": "node src/imap-monitor.js",
     "tunnel": "node src/tunnel.js",
+    "webhook-server": "node src/webhook-server.js",
+    "start": "concurrently -n webhook,tunnel -c cyan,green \"npm:webhook-server\" \"npm:tunnel\"",
     "test": "node --test tests/**/*.test.js",
     "test:coverage": "node --test --experimental-test-coverage tests/**/*.test.js"
   },
@@ -24,11 +26,13 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "imap": "^0.8.19",
     "better-sqlite3": "^11.0.0",
-    "mailparser": "^3.7.0",
     "dotenv": "^16.4.0",
-    "localtunnel": "^2.0.2"
+    "imap": "^0.8.19",
+    "localtunnel": "^2.0.2",
+    "mailparser": "^3.7.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
 }

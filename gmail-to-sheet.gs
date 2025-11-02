@@ -28,6 +28,9 @@
  * Optional: Set up a time-based trigger to run this automatically
  */
 
+ScriptApp.requireAllScopes(ScriptApp.AuthMode.FULL);
+const WEBHOOK_URL = 'https://rafael-personai-assistent.loca.lt/webhook';
+
 /**
  * Main function to sync unread emails to the Google Sheet
  */
