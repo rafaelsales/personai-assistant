@@ -1,0 +1,13 @@
+{
+  "id": "test-webhook-001",
+  "thread_id": "test-thread-001",
+  "received_at": "2025-11-01 12:00:00",
+  "downloaded_at": "2025-11-01 12:01:00",
+  "broadcasted_at": "",
+  "from_address": "test@example.com",
+  "to_address": "recipient@example.com",
+  "cc_address": "",
+  "subject": "Test Webhook Implementation",
+  "labels": "TESTING",
+  "body": "This is a test email to verify the webhook server implementation."
+}
