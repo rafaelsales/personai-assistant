@@ -8,7 +8,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "start": "node src/imap-monitor.js",
+    "imap-monitor": "node src/imap-monitor.js",
     "tunnel": "node src/tunnel.js",
     "test": "node --test tests/**/*.test.js",
     "test:coverage": "node --test --experimental-test-coverage tests/**/*.test.js"
