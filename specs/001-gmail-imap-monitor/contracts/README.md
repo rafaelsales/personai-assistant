@@ -102,7 +102,7 @@ class ModuleError extends Error {
     super(message);
     this.name = 'ModuleError';
     this.code = code;  // e.g., 'CONNECTION_FAILED', 'INVALID_EMAIL'
-    this.context = context;  // Additional info (uid, attempt, etc.)
+    this.context = context;  // Additional info (id, attempt, etc.)
     this.timestamp = new Date().toISOString();
   }
 }

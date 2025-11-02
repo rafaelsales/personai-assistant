@@ -10,8 +10,8 @@ import { dirname } from 'path';
  * Initial state structure
  */
 const INITIAL_STATE = {
-  last_uid: 0,
-  last_uid_received_at: '1970-01-01T00:00:00.000Z',
+  last_id: 0,
+  last_id_received_at: '1970-01-01T00:00:00.000Z',
   last_connected_at: '1970-01-01T00:00:00.000Z',
   last_error: null,
   connection_status: 'disconnected',
@@ -87,7 +87,7 @@ export function updateState(stateFilePath, updates) {
  */
 export function validateState(state) {
   // Check required fields
-  const required = ['last_uid', 'last_uid_received_at', 'last_connected_at', 'last_error', 'connection_status'];
+  const required = ['last_id', 'last_id_received_at', 'last_connected_at', 'last_error', 'connection_status'];
   for (const field of required) {
     if (!(field in state)) {
       throw new Error(`Missing required field: ${field}`);
@@ -95,8 +95,8 @@ export function validateState(state) {
   }
 
   // Validate types
-  if (!Number.isInteger(state.last_uid) || state.last_uid < 0) {
-    throw new Error('last_uid must be a non-negative integer');
+  if (!Number.isInteger(state.last_id) || state.last_id < 0) {
+    throw new Error('last_id must be a non-negative integer');
   }
 
   // Validate connection_status enum
@@ -106,8 +106,8 @@ export function validateState(state) {
   }
 
   // Validate date strings (basic check)
-  if (!state.last_uid_received_at || typeof state.last_uid_received_at !== 'string') {
-    throw new Error('last_uid_received_at must be a valid ISO 8601 string');
+  if (!state.last_id_received_at || typeof state.last_id_received_at !== 'string') {
+    throw new Error('last_id_received_at must be a valid ISO 8601 string');
   }
   if (!state.last_connected_at || typeof state.last_connected_at !== 'string') {
     throw new Error('last_connected_at must be a valid ISO 8601 string');

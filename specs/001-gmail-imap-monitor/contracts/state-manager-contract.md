@@ -16,8 +16,8 @@ Initialize or load connection state from file.
 **Returns**: `ConnectionState` object:
 ```typescript
 {
-  last_uid: number;
-  last_uid_received_at: string;      // ISO 8601
+  last_id: number;
+  last_id_received_at: string;      // ISO 8601
   last_connected_at: string;         // ISO 8601
   last_error: string | null;
   connection_status: 'connected' | 'reconnecting' | 'disconnected';
@@ -29,8 +29,8 @@ Initialize or load connection state from file.
 - If file doesn't exist: Create with initial state:
   ```json
   {
-    "last_uid": 0,
-    "last_uid_received_at": "1970-01-01T00:00:00.000Z",
+    "last_id": 0,
+    "last_id_received_at": "1970-01-01T00:00:00.000Z",
     "last_connected_at": "1970-01-01T00:00:00.000Z",
     "last_error": null,
     "connection_status": "disconnected"
@@ -47,7 +47,7 @@ Initialize or load connection state from file.
 **Example**:
 ```javascript
 const state = initState('./data/current_state.json');
-console.log('Current UID:', state.last_uid);
+console.log('Current id:', state.last_id);
 ```
 
 ---
@@ -106,8 +106,8 @@ Update state file with new values (atomic write).
 ```javascript
 // Update after processing email
 const newState = updateState('./data/current_state.json', {
-  last_uid: 12345,
-  last_uid_received_at: '2025-11-01T10:00:02.123Z',
+  last_id: 12345,
+  last_id_received_at: '2025-11-01T10:00:02.123Z',
   last_error: null
 });
 
@@ -156,8 +156,8 @@ Validate state object structure and types.
 **Behavior**:
 - Checks all required fields exist
 - Validates field types:
-  - `last_uid`: Must be non-negative integer
-  - `last_uid_received_at`: Must be valid ISO 8601 string
+  - `last_id`: Must be non-negative integer
+  - `last_id_received_at`: Must be valid ISO 8601 string
   - `last_connected_at`: Must be valid ISO 8601 string
   - `last_error`: Must be string or null
   - `connection_status`: Must be one of `'connected'`, `'reconnecting'`, `'disconnected'`
@@ -203,7 +203,7 @@ Thrown when state validation fails.
 - `name`: `'ValidationError'`
 - `message`: Description of validation failure
 - `code`: `'INVALID_FIELD'`
-- `context`: Object with details (e.g., `{ field: 'last_uid', value: -1, expected: 'non-negative integer' }`)
+- `context`: Object with details (e.g., `{ field: 'last_id', value: -1, expected: 'non-negative integer' }`)
 
 ---
 
@@ -284,7 +284,7 @@ updateState(path, {
 
 4. Test `validateState()`:
    - Accepts valid state
-   - Rejects invalid last_uid (negative, non-integer)
+   - Rejects invalid last_id (negative, non-integer)
    - Rejects invalid dates (non-ISO 8601)
    - Rejects invalid connection_status (not in enum)
    - Rejects missing required fields
@@ -345,13 +345,13 @@ import { initState, updateState, clearError } from './state-manager.js';
 // Initialize state
 const statePath = './data/current_state.json';
 const state = initState(statePath);
-console.log('Starting UID:', state.last_uid);
+console.log('Starting id:', state.last_id);
 
 // After processing email
 function onEmailProcessed(email) {
   updateState(statePath, {
-    last_uid: email.uid,
-    last_uid_received_at: email.received_at,
+    last_id: email.id,
+    last_id_received_at: email.downloaded_at,
     last_error: null
   });
 }

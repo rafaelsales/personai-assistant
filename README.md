@@ -60,26 +60,31 @@ openssl s_client -connect imap.gmail.com:993 -crlf
 ## Installation
 
 1. **Clone or navigate to the project directory:**
+
    ```bash
    cd personai-assistant
    ```
 
 2. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
 3. **Create `.env` file:**
+
    ```bash
    cp .env.example .env
    ```
 
 4. **Edit `.env` with your credentials:**
+
    ```bash
    nano .env
    ```
 
    Add your Gmail credentials:
+
    ```env
    GMAIL_USER=your-email@gmail.com
    GMAIL_APP_PASSWORD=xxxxxxxxxxxx
@@ -100,6 +105,7 @@ openssl s_client -connect imap.gmail.com:993 -crlf
    - `100` - Download last 100 unread emails
 
 5. **Create data directory:**
+
    ```bash
    mkdir -p data
    ```
@@ -109,10 +115,11 @@ openssl s_client -connect imap.gmail.com:993 -crlf
 ### Start the Monitor
 
 ```bash
-npm start
+npm run imap-monitor
 ```
 
 The program will:
+
 1. Connect to Gmail via IMAP
 2. Initialize SQLite database if needed
 3. **First run**: Download the last 10 unread emails (configurable via `INITIAL_SYNC_COUNT`)
@@ -124,6 +131,7 @@ The program will:
 ### View Logs
 
 The program logs to console with timestamps:
+
 ```
 [2025-11-01T10:30:45.123Z] INFO: Connected to imap.gmail.com
 [2025-11-01T10:30:46.456Z] INFO: Syncing emails since UID 12345
@@ -133,11 +141,13 @@ The program logs to console with timestamps:
 ### Check Current State
 
 View the current state:
+
 ```bash
 cat data/current_state.json
 ```
 
 Example output:
+
 ```json
 {
   "last_uid": 12346,
@@ -151,6 +161,7 @@ Example output:
 ### Query Database
 
 View stored emails:
+
 ```bash
 sqlite3 data/emails.db "SELECT uid, subject, from_addr, received_at FROM emails ORDER BY received_at DESC LIMIT 10;"
 ```
@@ -158,6 +169,7 @@ sqlite3 data/emails.db "SELECT uid, subject, from_addr, received_at FROM emails 
 ### Stop the Monitor
 
 Press `Ctrl+C` to gracefully shutdown. The program will:
+
 1. Close IMAP connection
 2. Save final state to `current_state.json`
 3. Close database connections
@@ -167,6 +179,7 @@ Press `Ctrl+C` to gracefully shutdown. The program will:
 By default, the monitor downloads the last 10 unread emails on first run. To import more emails:
 
 **Option 1: Increase INITIAL_SYNC_COUNT (before first run)**
+
 ```bash
 # Edit .env file
 nano .env
@@ -175,10 +188,11 @@ nano .env
 INITIAL_SYNC_COUNT=100  # Download last 100 unread emails
 
 # Start monitor
-npm start
+npm run imap-monitor
 ```
 
 **Option 2: Reset state file (after first run)**
+
 ```bash
 # Stop the monitor (Ctrl+C)
 
@@ -189,7 +203,7 @@ rm data/current_state.json
 nano .env
 
 # Restart monitor
-npm start
+npm run imap-monitor
 ```
 
 **Warning**: Importing thousands of emails may take time. Monitor the logs and database size.
@@ -250,6 +264,7 @@ Create `~/Library/LaunchAgents/com.personai.gmail-monitor.plist`:
 ```
 
 Load the service:
+
 ```bash
 launchctl load ~/Library/LaunchAgents/com.personai.gmail-monitor.plist
 ```
@@ -336,8 +351,9 @@ personai-assistant/
 ## Support
 
 For issues and questions, please check:
+
 1. This README and troubleshooting section
-2. Gmail IMAP documentation: https://support.google.com/mail/answer/7126229
+2. Gmail IMAP documentation: <https://support.google.com/mail/answer/7126229>
 3. Project issues on GitHub
 
 ## License

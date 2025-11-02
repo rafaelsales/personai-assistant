@@ -61,7 +61,7 @@
 
 ### Implementation for User Story 1
 
-- [x] T010 [P] [US1] Implement database operations in src/database.js: storeEmail(), getEmailByUid(), countEmails(), closeDatabase() per database-contract.md
+- [x] T010 [P] [US1] Implement database operations in src/database.js: storeEmail(), getEmailById(), countEmails(), closeDatabase() per database-contract.md
 - [x] T011 [P] [US1] Implement state manager operations in src/state-manager.js: initState(), readState(), updateState(), validateState() per state-manager-contract.md
 - [x] T012 [US1] Implement IMAP connection manager in src/imap-client.js: connect(), openInbox(), startIDLE(), handle 'mail' events (depends on T006 for config)
 - [x] T013 [US1] Implement email parser in src/email-processor.js: fetchEmail(), parseHeaders(), parseBody() using mailparser
@@ -69,15 +69,15 @@
 - [x] T015 [US1] Implement email storage workflow in src/email-processor.js: processEmail() that calls parser → validator → storeEmail() → updateState()
 - [x] T016 [US1] Implement main entry point in src/imap-monitor.js: initialize modules, start IMAP connection, handle 'mail' events, graceful shutdown on SIGINT/SIGTERM
 - [x] T017 [US1] Add error handling for email parsing failures (log error, skip email, continue - FR-014)
-- [x] T018 [US1] Add duplicate prevention logic using UID check before insertion (FR-009)
-- [x] T019 [US1] Add structured logging for email receipt events (UID, subject, from, timestamp - FR-011)
+- [x] T018 [US1] Add duplicate prevention logic using id check before insertion (FR-009)
+- [x] T019 [US1] Add structured logging for email receipt events (id, subject, from, timestamp - FR-011)
 
 **Checkpoint**: At this point, User Story 1 (real-time monitoring) should be fully functional and testable independently by sending test emails
 
 **Acceptance Criteria**:
 - ✓ Monitor connects to Gmail IMAP and enters IDLE state
 - ✓ New email arrives and appears in database within 5 seconds
-- ✓ All email fields stored correctly (uid, from, to, cc, subject, body, original_date, labels, received_at)
+- ✓ All email fields stored correctly (id, from, to, cc, subject, body, received_at, labels, downloaded_at)
 - ✓ Multiple simultaneous emails captured without loss or duplication
 - ✓ HTML emails stored correctly
 - ✓ Emails with multiple recipients (To, CC) preserved accurately
@@ -86,7 +86,7 @@
 
 ## Phase 4: User Story 2 - Automatic Reconnection & Sync (Priority: P2)
 
-**Goal**: Detect connection drops, automatically reconnect with exponential backoff, sync missed emails using UID-based search
+**Goal**: Detect connection drops, automatically reconnect with exponential backoff, sync missed emails using id-based search
 
 **Independent Test**: Disconnect network → send test emails → reconnect network → verify system auto-recovers within 60s and all missed emails appear in database
 
@@ -99,7 +99,7 @@
 - [ ] T020 [US2] Implement connection health monitoring in src/imap-client.js: detect 'error' and 'end' events, 30-second timeout checks (FR-006)
 - [ ] T021 [US2] Implement exponential backoff manager in src/imap-client.js: ReconnectionManager class with delays [1s, 2s, 4s, 8s, max 60s] (FR-007)
 - [ ] T022 [US2] Implement automatic reconnection logic in src/imap-client.js: reconnect() method that uses exponential backoff
-- [ ] T023 [US2] Implement missed email sync in src/imap-client.js: syncMissedEmails() that searches UIDs greater than last_uid (FR-008)
+- [ ] T023 [US2] Implement missed email sync in src/imap-client.js: syncMissedEmails() that searches UIDs greater than last_id (FR-008)
 - [ ] T024 [US2] Update state manager in src/state-manager.js: track connection_status transitions (connected/reconnecting/disconnected)
 - [ ] T025 [US2] Add error logging to state file when connection drops (last_error field, FR-005)
 - [ ] T026 [US2] Update main entry point in src/imap-monitor.js: wire up reconnection logic on connection loss
@@ -133,8 +133,8 @@
 - [ ] T029 [P] [US3] Add detailed state updates in src/state-manager.js: updateState() called immediately after each email processed (FR-005)
 - [ ] T030 [P] [US3] Add connection timestamp tracking in src/imap-client.js: update last_connected_at on successful connection
 - [ ] T031 [P] [US3] Add comprehensive logging in src/imap-monitor.js: log startup, connection established, IDLE activated
-- [ ] T032 [US3] Enhance email logging in src/email-processor.js: include UID, subject, sender in each log entry (FR-011)
-- [ ] T033 [US3] Add error context logging: include error type, timestamp, affected email UID when parsing fails
+- [ ] T032 [US3] Enhance email logging in src/email-processor.js: include id, subject, sender in each log entry (FR-011)
+- [ ] T033 [US3] Add error context logging: include error type, timestamp, affected email id when parsing fails
 - [ ] T034 [US3] Implement state file validation on startup: check for corruption, attempt recovery with initial state if needed
 - [ ] T035 [US3] Add helper function in src/state-manager.js: clearError() for use on successful recovery
 
@@ -142,7 +142,7 @@
 
 **Acceptance Criteria**:
 - ✓ State file shows current connection_status (connected/reconnecting/disconnected)
-- ✓ State file shows last_uid and last_uid_received_at after each email
+- ✓ State file shows last_id and last_id_received_at after each email
 - ✓ Error details recorded in state file with timestamp (last_error field)
 - ✓ Logs include timestamped entries for connections, disconnections, emails received, errors
 - ✓ Reconnection attempts visible in logs with exponential backoff pattern
@@ -249,10 +249,10 @@ Phase 6: Polish & Cross-Cutting Concerns
 2. Wait 5 seconds
 
 **Expected Results**:
-- ✓ Log entry shows: `{"level":"INFO","message":"Email received","uid":XXXX,"subject":"Test"}`
+- ✓ Log entry shows: `{"level":"INFO","message":"Email received","id":XXXX,"subject":"Test"}`
 - ✓ SQLite query: `SELECT * FROM emails WHERE subject='Test'` returns 1 row
-- ✓ All fields populated: uid, from_address, to_address, subject, body, original_date, labels, received_at
-- ✓ State file shows: last_uid updated, connection_status="connected", last_error=null
+- ✓ All fields populated: id, from_address, to_address, subject, body, received_at, labels, downloaded_at
+- ✓ State file shows: last_id updated, connection_status="connected", last_error=null
 
 **Pass Criteria**: Email appears in database within 5 seconds with all metadata
 
@@ -262,7 +262,7 @@ Phase 6: Polish & Cross-Cutting Concerns
 
 **Test Setup**:
 1. Complete User Story 1 test (monitor running and receiving emails)
-2. Note current last_uid from state file
+2. Note current last_id from state file
 
 **Test Execution**:
 1. Disconnect network (turn off WiFi)
@@ -275,8 +275,8 @@ Phase 6: Polish & Cross-Cutting Concerns
 - ✓ Log shows: "Reconnecting (attempt 1, delay 1000ms)"
 - ✓ Log shows: "Reconnection successful"
 - ✓ Log shows: "Syncing missed emails, count: 2"
-- ✓ SQLite query: `SELECT COUNT(*) FROM emails WHERE uid > [last_uid]` returns 2
-- ✓ State file shows: connection_status="connected", last_uid updated, last_error=null
+- ✓ SQLite query: `SELECT COUNT(*) FROM emails WHERE id > [last_id]` returns 2
+- ✓ State file shows: connection_status="connected", last_id updated, last_error=null
 
 **Pass Criteria**: System auto-recovers within 60 seconds and all missed emails synced
 
@@ -296,8 +296,8 @@ Phase 6: Polish & Cross-Cutting Concerns
 6. Check state file and logs
 
 **Expected Results**:
-- ✓ State file before email: shows current connection_status, last_uid, timestamps
-- ✓ State file after email: last_uid incremented, last_uid_received_at updated
+- ✓ State file before email: shows current connection_status, last_id, timestamps
+- ✓ State file after email: last_id incremented, last_id_received_at updated
 - ✓ State file after connection error: connection_status="disconnected", last_error="Authentication failed"
 - ✓ Logs show all events: startup, connection attempts, errors with timestamps
 - ✓ State updates within 2 seconds of any change

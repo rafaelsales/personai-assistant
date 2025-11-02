@@ -21,32 +21,32 @@ A local macOS background program that maintains a persistent IMAP connection to 
 - Maintain persistent connection with automatic health checks
 - Detect connection drops (network issues, hibernation, timeouts)
 - Implement automatic reconnection with exponential backoff
-- On reconnection: sync missed emails using `SEARCH UID <last_uid>:*`
+- On reconnection: sync missed emails using `SEARCH UID <last_id>:*`
 
 ### 3. Email Storage (SQLite)
 
 **Database Schema: `emails` table**
-- `uid` (INTEGER PRIMARY KEY) - IMAP UID
+- `id` (INTEGER PRIMARY KEY) - IMAP id
 - `from` (TEXT) - Sender email address
 - `to` (TEXT) - Recipient email address(es)
 - `cc` (TEXT) - CC recipients
 - `subject` (TEXT) - Email subject
 - `body` (TEXT) - Email body (plain text or HTML)
-- `original_date` (TEXT/DATETIME) - Original sent date/time from email headers
+- `received_at` (TEXT/DATETIME) - Original sent date/time from email headers
 - `labels` (TEXT) - Gmail labels/folders (JSON array stored as string)
-- `received_at` (TEXT/DATETIME) - Timestamp when received by local IMAP client
+- `downloaded_at` (TEXT/DATETIME) - Timestamp when received by local IMAP client
 
 **Indexes:**
-- Index on `uid` for fast lookups
-- Index on `received_at` for chronological queries
+- Index on `id` for fast lookups
+- Index on `downloaded_at` for chronological queries
 
 ### 4. State Management (JSON)
 
 **File: `current_state.json`**
 ```json
 {
-  "last_uid": 12345,
-  "last_uid_received_at": "2025-11-01T10:30:45.123Z",
+  "last_id": 12345,
+  "last_id_received_at": "2025-11-01T10:30:45.123Z",
   "last_connected_at": "2025-11-01T10:30:45.123Z",
   "last_error": null,
   "connection_status": "connected"
@@ -54,8 +54,8 @@ A local macOS background program that maintains a persistent IMAP connection to 
 ```
 
 **Fields:**
-- `last_uid` (number) - Highest UID processed
-- `last_uid_received_at` (ISO 8601 string) - Timestamp when last UID was received
+- `last_id` (number) - Highest id processed
+- `last_id_received_at` (ISO 8601 string) - Timestamp when last id was received
 - `last_connected_at` (ISO 8601 string) - Last successful connection timestamp
 - `last_error` (string|null) - Last error/exception message, null if none
 - `connection_status` (string) - Current status: "connected", "reconnecting", "disconnected"
@@ -83,7 +83,7 @@ The program should be designed to support:
 ### IMAP Library
 - Recommended: `node-imap` or `imap-simple`
 - Must support IMAP IDLE
-- Must support UID-based operations
+- Must support id-based operations
 
 ### SQLite Library
 - Recommended: `better-sqlite3` (synchronous, fast)
@@ -97,7 +97,7 @@ The program should be designed to support:
 
 ### Performance
 - Handle large mailboxes (10,000+ emails)
-- Efficient UID-based incremental sync
+- Efficient id-based incremental sync
 - Avoid re-downloading existing emails
 
 ### Process Management
@@ -162,7 +162,7 @@ LOG_LEVEL=info
 - Log levels: ERROR, WARN, INFO, DEBUG
 - Log events:
   - Connection established/lost
-  - Email received (UID, subject, from)
+  - Email received (id, subject, from)
   - Sync started/completed
   - Errors with stack traces
   - Reconnection attempts

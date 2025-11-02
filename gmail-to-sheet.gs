@@ -6,14 +6,16 @@
  *
  * Columns:
  * - id: Gmail message ID
+ * - thread_id: Gmail message ID
+ * - received_at: Date email was sent/received in Gmail
+ * - downloaded_at: Timestamp when this script downloaded the email
+ * - broadcasted_at: Timestamp when this script delivered the message to webhook endpoint
  * - from_address: Sender email address
  * - to_address: Recipient email addresses (comma-separated)
  * - cc_address: CC email addresses (comma-separated)
  * - subject: Email subject line
- * - body: Email body text (plain text preferred, falls back to HTML)
- * - original_date: Date email was sent
  * - labels: Gmail labels (comma-separated)
- * - received_at: Timestamp when this script processed the email
+ * - body: Email body text (plain text preferred, falls back to HTML)
  *
  * Setup Instructions:
  * 1. Open your Google Sheet

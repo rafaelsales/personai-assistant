@@ -51,9 +51,9 @@ As a system administrator or power user, I want to see the current connection st
 
 **Acceptance Scenarios**:
 
-1. **Given** the monitor is running, **When** I check the state file, **Then** I see current connection status (connected/reconnecting/disconnected), last UID processed, and timestamps for last connection and last email
+1. **Given** the monitor is running, **When** I check the state file, **Then** I see current connection status (connected/reconnecting/disconnected), last id processed, and timestamps for last connection and last email
 2. **Given** an error occurs (authentication failure, network timeout), **When** I check the state file, **Then** the error details are recorded with timestamp
-3. **Given** emails are being processed, **When** I check the logs, **Then** I see timestamped entries for each email received including UID, subject, and sender
+3. **Given** emails are being processed, **When** I check the logs, **Then** I see timestamped entries for each email received including id, subject, and sender
 4. **Given** the monitor is reconnecting, **When** I check logs and state, **Then** I see reconnection attempts with timestamps and the exponential backoff pattern
 
 ---
@@ -74,13 +74,13 @@ As a system administrator or power user, I want to see the current connection st
 
 - **FR-001**: System MUST establish and maintain a persistent IMAP connection to Gmail using secure TLS/SSL on port 993
 - **FR-002**: System MUST use IMAP IDLE extension to receive real-time push notifications for new emails
-- **FR-003**: System MUST store each email with the following fields: UID, from, to, cc, subject, body, original_date, labels, received_at
-- **FR-004**: System MUST maintain a state file containing: last_uid, last_uid_received_at, last_connected_at, last_error, connection_status
+- **FR-003**: System MUST store each email with the following fields: id, from, to, cc, subject, body, received_at, labels, downloaded_at
+- **FR-004**: System MUST maintain a state file containing: last_id, last_id_received_at, last_connected_at, last_error, connection_status
 - **FR-005**: System MUST update the state file immediately after each email is processed and on connection state changes
 - **FR-006**: System MUST detect connection drops (network issues, timeouts, hibernation) within 30 seconds
 - **FR-007**: System MUST automatically reconnect using exponential backoff strategy (1s, 2s, 4s, 8s, maximum 60s)
-- **FR-008**: System MUST sync missed emails after reconnection by searching for UIDs greater than last_uid
-- **FR-009**: System MUST prevent duplicate email storage by checking UID uniqueness before insertion
+- **FR-008**: System MUST sync missed emails after reconnection by searching for UIDs greater than last_id
+- **FR-009**: System MUST prevent duplicate email storage by checking id uniqueness before insertion
 - **FR-010**: System MUST authenticate using Gmail App Password stored in environment variables
 - **FR-011**: System MUST log all significant events with timestamps: connections, disconnections, emails received, errors, reconnection attempts
 - **FR-012**: System MUST handle graceful shutdown on SIGINT/SIGTERM by closing IMAP connection and flushing state to disk
@@ -91,9 +91,9 @@ As a system administrator or power user, I want to see the current connection st
 
 ### Key Entities
 
-- **Email Record**: Represents a single email message with metadata (UID, sender, recipients, subject, body content), delivery information (original send date, local receipt timestamp), and categorization (Gmail labels). UID serves as unique identifier and primary key.
+- **Email Record**: Represents a single email message with metadata (id, sender, recipients, subject, body content), delivery information (original send date, local receipt timestamp), and categorization (Gmail labels). id serves as unique identifier and primary key.
 
-- **Connection State**: Represents the current operational status of the IMAP monitor including connection health (connected/reconnecting/disconnected), synchronization position (last processed UID and timestamp), health tracking (last successful connection time), and error history (most recent error if any). Updated in real-time as system operates.
+- **Connection State**: Represents the current operational status of the IMAP monitor including connection health (connected/reconnecting/disconnected), synchronization position (last processed id and timestamp), health tracking (last successful connection time), and error history (most recent error if any). Updated in real-time as system operates.
 
 ## Success Criteria *(mandatory)*
 

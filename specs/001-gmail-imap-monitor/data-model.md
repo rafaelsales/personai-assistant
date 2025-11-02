@@ -32,19 +32,19 @@ Both models are derived from requirements FR-003 (email fields) and FR-004 (stat
 
 ```sql
 CREATE TABLE IF NOT EXISTS emails (
-  uid INTEGER PRIMARY KEY NOT NULL,
+  id INTEGER PRIMARY KEY NOT NULL,
   from_address TEXT NOT NULL,
   to_address TEXT NOT NULL,
   cc_address TEXT,
   subject TEXT NOT NULL,
   body TEXT NOT NULL,
-  original_date TEXT NOT NULL,
+  received_at TEXT NOT NULL,
   labels TEXT NOT NULL,
-  received_at TEXT NOT NULL
+  downloaded_at TEXT NOT NULL
 );
 
 -- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_received_at ON emails(received_at);
+CREATE INDEX IF NOT EXISTS idx_received_at ON emails(downloaded_at);
 CREATE INDEX IF NOT EXISTS idx_from_address ON emails(from_address);
 ```
 
@@ -52,20 +52,20 @@ CREATE INDEX IF NOT EXISTS idx_from_address ON emails(from_address);
 
 | Field | Type | Constraints | Description | Validation Rules |
 |-------|------|-------------|-------------|------------------|
-| `uid` | INTEGER | PRIMARY KEY, NOT NULL | IMAP UID - unique identifier for email in mailbox | Must be positive integer; uniqueness enforced by primary key |
+| `id` | INTEGER | PRIMARY KEY, NOT NULL | IMAP id - unique identifier for email in mailbox | Must be positive integer; uniqueness enforced by primary key |
 | `from_address` | TEXT | NOT NULL | Sender email address | Must not be empty; store full address (e.g., "Name &lt;email@example.com&gt;") |
 | `to_address` | TEXT | NOT NULL | Recipient email address(es) | Must not be empty; comma-separated if multiple; store full addresses |
 | `cc_address` | TEXT | NULLABLE | CC recipient email address(es) | May be NULL or empty string; comma-separated if multiple |
 | `subject` | TEXT | NOT NULL | Email subject line | May be empty string if email has no subject (edge case) |
 | `body` | TEXT | NOT NULL | Email body content (plain text or HTML) | May be empty string if email has no body (edge case); prioritize plain text, fallback to HTML |
-| `original_date` | TEXT | NOT NULL | Original sent date/time from email headers | ISO 8601 format (e.g., "2025-11-01T10:30:45.123Z"); extracted from email Date header |
+| `received_at` | TEXT | NOT NULL | Original sent date/time from email headers | ISO 8601 format (e.g., "2025-11-01T10:30:45.123Z"); extracted from email Date header |
 | `labels` | TEXT | NOT NULL | Gmail labels/folders as JSON array | Valid JSON array string (e.g., '["INBOX", "IMPORTANT"]'); empty array if no labels: '[]' |
-| `received_at` | TEXT | NOT NULL | Timestamp when email was received by local IMAP client | ISO 8601 format (e.g., "2025-11-01T10:30:45.123Z"); generated at time of local storage |
+| `downloaded_at` | TEXT | NOT NULL | Timestamp when email was received by local IMAP client | ISO 8601 format (e.g., "2025-11-01T10:30:45.123Z"); generated at time of local storage |
 
 #### Indexes
 
-1. **Primary Key Index** (`uid`):
-   - Purpose: Fast UID lookups for duplicate detection (FR-009)
+1. **Primary Key Index** (`id`):
+   - Purpose: Fast id lookups for duplicate detection (FR-009)
    - Use case: Check if email already exists before insertion
    - Automatically created by PRIMARY KEY constraint
 
@@ -85,9 +85,9 @@ CREATE INDEX IF NOT EXISTS idx_from_address ON emails(from_address);
 
 ```javascript
 function validateEmailRecord(email) {
-  // UID validation
-  if (!Number.isInteger(email.uid) || email.uid <= 0) {
-    throw new Error('UID must be a positive integer');
+  // id validation
+  if (!Number.isInteger(email.id) || email.id <= 0) {
+    throw new Error('id must be a positive integer');
   }
 
   // Required text fields
@@ -121,11 +121,11 @@ function validateEmailRecord(email) {
   }
 
   // Date validation (ISO 8601)
-  if (!email.original_date || !isValidISO8601(email.original_date)) {
-    throw new Error('original_date must be ISO 8601 format');
-  }
   if (!email.received_at || !isValidISO8601(email.received_at)) {
     throw new Error('received_at must be ISO 8601 format');
+  }
+  if (!email.downloaded_at || !isValidISO8601(email.downloaded_at)) {
+    throw new Error('downloaded_at must be ISO 8601 format');
   }
 
   return email;
@@ -137,45 +137,45 @@ function validateEmailRecord(email) {
 **Example 1: Typical Email**
 ```json
 {
-  "uid": 12345,
+  "id": 12345,
   "from_address": "John Doe <john.doe@example.com>",
   "to_address": "recipient@gmail.com",
   "cc_address": "cc1@example.com, cc2@example.com",
   "subject": "Meeting Tomorrow",
   "body": "Hi,\n\nLet's meet at 2pm tomorrow.\n\nBest,\nJohn",
-  "original_date": "2025-11-01T10:30:45.000Z",
+  "received_at": "2025-11-01T10:30:45.000Z",
   "labels": "[\"INBOX\", \"IMPORTANT\"]",
-  "received_at": "2025-11-01T10:30:48.123Z"
+  "downloaded_at": "2025-11-01T10:30:48.123Z"
 }
 ```
 
 **Example 2: Edge Case - No Subject, No CC**
 ```json
 {
-  "uid": 12346,
+  "id": 12346,
   "from_address": "noreply@service.com",
   "to_address": "recipient@gmail.com",
   "cc_address": null,
   "subject": "",
   "body": "Your verification code is 123456",
-  "original_date": "2025-11-01T11:00:00.000Z",
+  "received_at": "2025-11-01T11:00:00.000Z",
   "labels": "[\"INBOX\"]",
-  "received_at": "2025-11-01T11:00:02.456Z"
+  "downloaded_at": "2025-11-01T11:00:02.456Z"
 }
 ```
 
 **Example 3: Edge Case - HTML Body, Multiple Labels**
 ```json
 {
-  "uid": 12347,
+  "id": 12347,
   "from_address": "Newsletter <news@company.com>",
   "to_address": "recipient@gmail.com",
   "cc_address": null,
   "subject": "Weekly Update",
   "body": "<html><body><h1>Welcome</h1><p>This week's news...</p></body></html>",
-  "original_date": "2025-11-01T12:00:00.000Z",
+  "received_at": "2025-11-01T12:00:00.000Z",
   "labels": "[\"INBOX\", \"CATEGORY_PROMOTIONS\", \"UNREAD\"]",
-  "received_at": "2025-11-01T12:00:03.789Z"
+  "downloaded_at": "2025-11-01T12:00:03.789Z"
 }
 ```
 
@@ -193,8 +193,8 @@ function validateEmailRecord(email) {
 
 ```typescript
 interface ConnectionState {
-  last_uid: number;                      // Highest UID processed
-  last_uid_received_at: string;          // ISO 8601 timestamp
+  last_id: number;                      // Highest id processed
+  last_id_received_at: string;          // ISO 8601 timestamp
   last_connected_at: string;             // ISO 8601 timestamp
   last_error: string | null;             // Error message or null
   connection_status: ConnectionStatus;   // Enum: connected | reconnecting | disconnected
@@ -207,8 +207,8 @@ type ConnectionStatus = 'connected' | 'reconnecting' | 'disconnected';
 
 | Field | Type | Description | Validation Rules | Update Trigger |
 |-------|------|-------------|------------------|----------------|
-| `last_uid` | number | Highest UID processed and stored in database | Must be non-negative integer; 0 if no emails processed yet | After each successful email insertion (FR-005) |
-| `last_uid_received_at` | string | Timestamp when `last_uid` email was received locally | ISO 8601 format; must match `received_at` of email with `last_uid` | After each successful email insertion (FR-005) |
+| `last_id` | number | Highest id processed and stored in database | Must be non-negative integer; 0 if no emails processed yet | After each successful email insertion (FR-005) |
+| `last_id_received_at` | string | Timestamp when `last_id` email was received locally | ISO 8601 format; must match `downloaded_at` of email with `last_id` | After each successful email insertion (FR-005) |
 | `last_connected_at` | string | Last successful IMAP connection timestamp | ISO 8601 format | On successful connection or reconnection |
 | `last_error` | string \| null | Most recent error message; null if no error | Any string or null; cleared on successful recovery | On any error (connection, parsing, storage) (FR-005) |
 | `connection_status` | string | Current connection state | Must be one of: `"connected"`, `"reconnecting"`, `"disconnected"` | On any connection state change (FR-005) |
@@ -230,7 +230,7 @@ stateDiagram-v2
 ### Update Policy
 
 **Immediate Writes** (FR-005):
-1. **After each email processed**: Update `last_uid` and `last_uid_received_at`
+1. **After each email processed**: Update `last_id` and `last_id_received_at`
 2. **On connection state change**: Update `connection_status` and `last_connected_at` (if connecting)
 3. **On error**: Update `last_error` and `connection_status`
 4. **On successful recovery**: Clear `last_error` (set to null)
@@ -245,8 +245,8 @@ stateDiagram-v2
 **Example 1: Healthy Connected State**
 ```json
 {
-  "last_uid": 12347,
-  "last_uid_received_at": "2025-11-01T12:00:03.789Z",
+  "last_id": 12347,
+  "last_id_received_at": "2025-11-01T12:00:03.789Z",
   "last_connected_at": "2025-11-01T10:00:00.000Z",
   "last_error": null,
   "connection_status": "connected"
@@ -256,8 +256,8 @@ stateDiagram-v2
 **Example 2: Initial Startup (No Emails Yet)**
 ```json
 {
-  "last_uid": 0,
-  "last_uid_received_at": "1970-01-01T00:00:00.000Z",
+  "last_id": 0,
+  "last_id_received_at": "1970-01-01T00:00:00.000Z",
   "last_connected_at": "2025-11-01T10:00:00.000Z",
   "last_error": null,
   "connection_status": "connected"
@@ -267,8 +267,8 @@ stateDiagram-v2
 **Example 3: Reconnecting After Error**
 ```json
 {
-  "last_uid": 12340,
-  "last_uid_received_at": "2025-11-01T09:30:00.000Z",
+  "last_id": 12340,
+  "last_id_received_at": "2025-11-01T09:30:00.000Z",
   "last_connected_at": "2025-11-01T09:00:00.000Z",
   "last_error": "Connection timeout: ETIMEDOUT",
   "connection_status": "reconnecting"
@@ -278,8 +278,8 @@ stateDiagram-v2
 **Example 4: Disconnected with Auth Error**
 ```json
 {
-  "last_uid": 12340,
-  "last_uid_received_at": "2025-11-01T09:30:00.000Z",
+  "last_id": 12340,
+  "last_id_received_at": "2025-11-01T09:30:00.000Z",
   "last_connected_at": "2025-11-01T09:00:00.000Z",
   "last_error": "Authentication failed: Invalid credentials",
   "connection_status": "disconnected"
@@ -292,8 +292,8 @@ When `current_state.json` doesn't exist, create with:
 
 ```json
 {
-  "last_uid": 0,
-  "last_uid_received_at": "1970-01-01T00:00:00.000Z",
+  "last_id": 0,
+  "last_id_received_at": "1970-01-01T00:00:00.000Z",
   "last_connected_at": "1970-01-01T00:00:00.000Z",
   "last_error": null,
   "connection_status": "disconnected"
@@ -311,7 +311,7 @@ When `current_state.json` doesn't exist, create with:
 │   Connection State  │
 │   (current_state)   │
 │                     │
-│ - last_uid ─────────┼──────┐
+│ - last_id ─────────┼──────┐
 │ - connection_status │      │ References (logical, not FK)
 │ - last_error        │      │
 └─────────────────────┘      │
@@ -321,19 +321,19 @@ When `current_state.json` doesn't exist, create with:
                     │    Email Record     │
                     │      (emails)       │
                     │                     │
-                    │ - uid (PK) ◄────────┤
+                    │ - id (PK) ◄────────┤
                     │ - from_address      │
                     │ - subject           │
                     │ - body              │
-                    │ - received_at       │
+                    │ - downloaded_at       │
                     │ - labels            │
                     └─────────────────────┘
 ```
 
-**Relationship**: `Connection State.last_uid` logically references `Email Record.uid`
+**Relationship**: `Connection State.last_id` logically references `Email Record.id`
 - Not enforced as foreign key (different storage mechanisms)
-- Application ensures consistency: `last_uid` always exists in `emails` table
-- Used for recovery: On reconnection, fetch UIDs greater than `last_uid` (FR-008)
+- Application ensures consistency: `last_id` always exists in `emails` table
+- Used for recovery: On reconnection, fetch UIDs greater than `last_id` (FR-008)
 
 ---
 
@@ -345,40 +345,40 @@ When `current_state.json` doesn't exist, create with:
 
 ```sql
 -- Check if email exists
-SELECT 1 FROM emails WHERE uid = ? LIMIT 1;
+SELECT 1 FROM emails WHERE id = ? LIMIT 1;
 
 -- If not exists, insert
 INSERT INTO emails (
-  uid, from_address, to_address, cc_address, subject,
-  body, original_date, labels, received_at
+  id, from_address, to_address, cc_address, subject,
+  body, received_at, labels, downloaded_at
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 ```
 
 **Application Logic**:
 ```javascript
 function storeEmail(db, email) {
-  const exists = db.prepare('SELECT 1 FROM emails WHERE uid = ?').get(email.uid);
+  const exists = db.prepare('SELECT 1 FROM emails WHERE id = ?').get(email.id);
   if (exists) {
-    logger.warn('Duplicate email detected', { uid: email.uid });
+    logger.warn('Duplicate email detected', { id: email.id });
     return false;  // Skip duplicate (FR-009)
   }
 
   const stmt = db.prepare(`
-    INSERT INTO emails (uid, from_address, to_address, cc_address,
-                         subject, body, original_date, labels, received_at)
+    INSERT INTO emails (id, from_address, to_address, cc_address,
+                         subject, body, received_at, labels, downloaded_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   stmt.run(
-    email.uid,
+    email.id,
     email.from_address,
     email.to_address,
     email.cc_address,
     email.subject,
     email.body,
-    email.original_date,
+    email.received_at,
     email.labels,
-    email.received_at
+    email.downloaded_at
   );
 
   return true;
@@ -406,22 +406,22 @@ function updateState(stateFilePath, updates) {
 ```javascript
 async function syncMissedEmails(imapClient, db, stateManager) {
   const state = stateManager.readState();
-  const lastUid = state.last_uid;
+  const lastId = state.last_id;
 
-  // Fetch UIDs greater than last_uid (FR-008)
-  const uids = await imapClient.search(['UID', `${lastUid + 1}:*`]);
+  // Fetch UIDs greater than last_id (FR-008)
+  const uids = await imapClient.search(['id', `${lastId + 1}:*`]);
 
-  logger.info('Syncing missed emails', { count: uids.length, lastUid });
+  logger.info('Syncing missed emails', { count: uids.length, lastId });
 
   // Batch fetch and store
-  for (const uid of uids) {
-    const email = await imapClient.fetchEmail(uid);
+  for (const id of uids) {
+    const email = await imapClient.fetchEmail(id);
     const stored = storeEmail(db, email);
 
     if (stored) {
       stateManager.updateState({
-        last_uid: email.uid,
-        last_uid_received_at: email.received_at,
+        last_id: email.id,
+        last_id_received_at: email.downloaded_at,
         last_error: null,
       });
     }
@@ -434,9 +434,9 @@ async function syncMissedEmails(imapClient, db, stateManager) {
 #### 4. Query Recent Emails (Chronological)
 
 ```sql
-SELECT uid, from_address, subject, received_at
+SELECT id, from_address, subject, downloaded_at
 FROM emails
-ORDER BY received_at DESC
+ORDER BY downloaded_at DESC
 LIMIT 100;
 ```
 
@@ -454,7 +454,7 @@ SELECT COUNT(*) as total FROM emails;
 
 | Error Type | Handling Strategy | Recovery |
 |------------|-------------------|----------|
-| Unique constraint violation (duplicate UID) | Log warning, skip email, continue | No recovery needed (duplicate prevention working) |
+| Unique constraint violation (duplicate id) | Log warning, skip email, continue | No recovery needed (duplicate prevention working) |
 | Database locked | Retry with exponential backoff (WAL mode reduces this) | Retry up to 3 times with 100ms, 200ms, 400ms delays |
 | Database corruption | Log error, attempt recovery with `.recover`, continue monitoring | May lose corrupted email; don't crash (FR-014) |
 | Disk full | Log critical error, pause insertions, continue monitoring | User must free space; monitor resumes when space available |
@@ -487,7 +487,7 @@ SELECT COUNT(*) as total FROM emails;
 **Expected Performance**:
 - Single email insert: <10ms (better-sqlite3 synchronous)
 - Batch insert (100 emails): <500ms with transaction
-- Query by UID: <1ms (primary key lookup)
+- Query by id: <1ms (primary key lookup)
 - Query recent 100 emails: <10ms (indexed scan)
 
 ### Memory Footprint
@@ -519,7 +519,7 @@ This data model provides:
 ✅ **Comprehensive email storage** with all required fields (FR-003)
 ✅ **Robust state tracking** for monitoring and recovery (FR-004, FR-005)
 ✅ **Efficient indexing** for chronological queries (FR-002)
-✅ **Duplicate prevention** via UID primary key (FR-009)
+✅ **Duplicate prevention** via id primary key (FR-009)
 ✅ **Edge case handling** for missing fields (empty strings, null values)
 ✅ **Performance optimization** for 10,000+ email target (FR-013)
 ✅ **Error resilience** with graceful degradation (FR-014)

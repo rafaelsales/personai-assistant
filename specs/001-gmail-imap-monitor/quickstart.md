@@ -146,7 +146,7 @@ npm start
 ```
 {"timestamp":"2025-11-01T10:00:00.000Z","level":"INFO","message":"Starting Gmail IMAP Monitor"}
 {"timestamp":"2025-11-01T10:00:01.234Z","level":"INFO","message":"Database initialized","dbPath":"./data/emails.db"}
-{"timestamp":"2025-11-01T10:00:01.500Z","level":"INFO","message":"State initialized","last_uid":0}
+{"timestamp":"2025-11-01T10:00:01.500Z","level":"INFO","message":"State initialized","last_id":0}
 {"timestamp":"2025-11-01T10:00:02.000Z","level":"INFO","message":"Connecting to IMAP","host":"imap.gmail.com"}
 {"timestamp":"2025-11-01T10:00:03.123Z","level":"INFO","message":"IMAP connected"}
 {"timestamp":"2025-11-01T10:00:03.456Z","level":"INFO","message":"IDLE activated - monitoring for new emails"}
@@ -192,8 +192,8 @@ cat data/current_state.json
 **Example output**:
 ```json
 {
-  "last_uid": 12345,
-  "last_uid_received_at": "2025-11-01T10:05:30.123Z",
+  "last_id": 12345,
+  "last_id_received_at": "2025-11-01T10:05:30.123Z",
   "last_connected_at": "2025-11-01T10:00:03.123Z",
   "last_error": null,
   "connection_status": "connected"
@@ -234,8 +234,8 @@ watch -n 1 'cat data/current_state.json'
 
 Expected log entry when email arrives:
 ```json
-{"timestamp":"2025-11-01T10:10:15.123Z","level":"INFO","message":"Email received","uid":12346,"subject":"Test Email","from":"sender@example.com"}
-{"timestamp":"2025-11-01T10:10:15.234Z","level":"INFO","message":"Email stored","uid":12346}
+{"timestamp":"2025-11-01T10:10:15.123Z","level":"INFO","message":"Email received","id":12346,"subject":"Test Email","from":"sender@example.com"}
+{"timestamp":"2025-11-01T10:10:15.234Z","level":"INFO","message":"Email stored","id":12346}
 ```
 
 ---
@@ -255,30 +255,30 @@ sqlite3 data/emails.db
 SELECT COUNT(*) FROM emails;
 
 -- View recent emails
-SELECT uid, from_address, subject, received_at
+SELECT id, from_address, subject, downloaded_at
 FROM emails
-ORDER BY received_at DESC
+ORDER BY downloaded_at DESC
 LIMIT 10;
 
 -- Search by sender
-SELECT uid, subject, received_at
+SELECT id, subject, downloaded_at
 FROM emails
 WHERE from_address LIKE '%example.com%'
-ORDER BY received_at DESC;
+ORDER BY downloaded_at DESC;
 
 -- Search by subject
-SELECT uid, from_address, subject, received_at
+SELECT id, from_address, subject, downloaded_at
 FROM emails
 WHERE subject LIKE '%meeting%'
-ORDER BY received_at DESC;
+ORDER BY downloaded_at DESC;
 
--- View email by UID
-SELECT * FROM emails WHERE uid = 12345;
+-- View email by id
+SELECT * FROM emails WHERE id = 12345;
 
 -- Count emails by date
-SELECT DATE(received_at) as date, COUNT(*) as count
+SELECT DATE(downloaded_at) as date, COUNT(*) as count
 FROM emails
-GROUP BY DATE(received_at)
+GROUP BY DATE(downloaded_at)
 ORDER BY date DESC;
 
 -- Exit
@@ -296,17 +296,17 @@ const db = new Database('./data/emails.db', { readonly: true });
 
 // Get recent emails
 const recent = db.prepare(`
-  SELECT uid, from_address, subject, received_at
+  SELECT id, from_address, subject, downloaded_at
   FROM emails
-  ORDER BY received_at DESC
+  ORDER BY downloaded_at DESC
   LIMIT 20
 `).all();
 
 console.log('Recent Emails:');
 recent.forEach(email => {
-  console.log(`[${email.uid}] ${email.from_address}`);
+  console.log(`[${email.id}] ${email.from_address}`);
   console.log(`  Subject: ${email.subject}`);
-  console.log(`  Received: ${email.received_at}\n`);
+  console.log(`  Received: ${email.downloaded_at}\n`);
 });
 
 db.close();
@@ -386,10 +386,10 @@ mv data/current_state.json data/current_state.json.backup
 npm start
 ```
 
-**Note**: You may need to manually set `last_uid` by checking the database:
+**Note**: You may need to manually set `last_id` by checking the database:
 ```bash
-sqlite3 data/emails.db 'SELECT MAX(uid) FROM emails;'
-# Update current_state.json with this UID after creation
+sqlite3 data/emails.db 'SELECT MAX(id) FROM emails;'
+# Update current_state.json with this id after creation
 ```
 
 ### Monitor Crashes on Mac Sleep/Wake
@@ -462,7 +462,7 @@ cat data/current_state.json | grep connection_status
 # Send test email (from another account or Gmail's web interface)
 # Wait 10 seconds, then check:
 sqlite3 data/emails.db 'SELECT COUNT(*) FROM emails;'
-sqlite3 data/emails.db 'SELECT subject FROM emails ORDER BY received_at DESC LIMIT 1;'
+sqlite3 data/emails.db 'SELECT subject FROM emails ORDER BY downloaded_at DESC LIMIT 1;'
 ```
 
 ---

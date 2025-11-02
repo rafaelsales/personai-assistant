@@ -117,13 +117,13 @@ N/A - No constitution defined, therefore no violations to track.
 
 **Key Design Decisions**:
 1. **Database Schema**:
-   - `emails` table with UID primary key
-   - Indexes on `received_at` (chronological) and `from_address` (queries)
+   - `emails` table with id primary key
+   - Indexes on `downloaded_at` (chronological) and `from_address` (queries)
    - WAL mode for better concurrency
 
 2. **State Management**:
    - JSON file with atomic writes (temp file + rename)
-   - Tracks: last_uid, connection_status, timestamps, errors
+   - Tracks: last_id, connection_status, timestamps, errors
    - Updated after each email and on connection changes
 
 3. **Module Architecture**:
@@ -134,7 +134,7 @@ N/A - No constitution defined, therefore no violations to track.
 4. **Error Handling**:
    - Graceful degradation (log and continue)
    - Exponential backoff for transient errors
-   - Duplicate prevention via UID primary key
+   - Duplicate prevention via id primary key
    - No crashes on individual email parsing failures
 
 **Performance Targets Met**:
